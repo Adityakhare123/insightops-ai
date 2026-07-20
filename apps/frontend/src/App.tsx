@@ -1,51 +1,38 @@
-import { useQuery } from "@tanstack/react-query";
+import DashboardPage from "./features/dashboard/DashboardPage";
+import LoginPage from "./features/auth/LoginPage";
+import { useAuth } from "./features/auth/AuthContext";
 
-import { apiClient } from "./api/client";
-import type { HealthResponse } from "./types/health";
 
-async function fetchHealth(): Promise<HealthResponse> {
-  const response = await apiClient.get<HealthResponse>("/health");
-  return response.data;
-}
-
-export default function App() {
-  const healthQuery = useQuery({
-    queryKey: ["api-health"],
-    queryFn: fetchHealth,
-    retry: 1,
-  });
-
+function ApplicationLoader() {
   return (
-    <main className="app-shell">
-      <section className="hero-card">
-        <p className="eyebrow">Day 1 Foundation</p>
-        <h1>InsightOps AI</h1>
-        <p className="subtitle">
-          Agentic Business Intelligence and Document Intelligence Platform
-        </p>
+    <main className="application-loader">
+      <div className="application-loader-mark">
+        IO
+      </div>
 
-        <div className="status-panel">
-          <span>Backend status</span>
-          {healthQuery.isPending && <strong>Checking…</strong>}
-          {healthQuery.isError && <strong>Unavailable</strong>}
-          {healthQuery.data && (
-            <strong>
-              {healthQuery.data.status} · v{healthQuery.data.version}
-            </strong>
-          )}
-        </div>
+      <p>Restoring your secure workspace…</p>
 
-        <div className="next-step">
-          <h2>Current foundation</h2>
-          <ul>
-            <li>React frontend</li>
-            <li>FastAPI backend</li>
-            <li>PostgreSQL with pgvector</li>
-            <li>Redis and Celery worker</li>
-            <li>MinIO object storage</li>
-          </ul>
-        </div>
-      </section>
+      <div className="application-loader-track">
+        <span />
+      </div>
     </main>
   );
+}
+
+
+export default function App() {
+  const {
+    isAuthenticated,
+    isInitializing,
+  } = useAuth();
+
+  if (isInitializing) {
+    return <ApplicationLoader />;
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return <DashboardPage />;
 }

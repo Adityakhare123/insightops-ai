@@ -1,3 +1,4 @@
+from apps.api.app.db.models.user import User
 from apps.api.app.db.models.workspace import (
     Agent,
     Carrier,
@@ -11,6 +12,7 @@ from apps.api.app.db.models.workspace import (
 
 __all__ = [
     "Workspace",
+    "User",
     "Carrier",
     "Plan",
     "Agent",

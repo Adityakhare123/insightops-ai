@@ -7,6 +7,11 @@ from typing import Any
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from apps.api.app.core.config import settings
+from apps.api.app.core.security import (
+    hash_password,
+    verify_password,
+)
 from apps.api.app.db.models import (
     Agent,
     Carrier,
@@ -15,34 +20,49 @@ from apps.api.app.db.models import (
     Payment,
     Plan,
     Policy,
+    User,
     Workspace,
 )
 from apps.api.app.db.session import SessionLocal
-from packages.data_engineering.synthetic_data import build_demo_dataset
+from packages.data_engineering.synthetic_data import (
+    build_demo_dataset,
+)
 
 
 DEMO_WORKSPACE_NAME = "InsightOps Insurance Demo"
-DEMO_WORKSPACE_SLUG = "insightops-insurance-demo"
 
 
-def get_or_create_workspace(session: Session) -> Workspace:
-    """Return the portfolio demo workspace, creating it when necessary."""
+def get_demo_workspace_slug() -> str:
+    """Return the normalized configured demo workspace slug."""
+
+    return settings.demo_workspace_slug.strip().lower()
+
+
+def get_or_create_workspace(
+    session: Session,
+) -> Workspace:
+    """Return the demo workspace, creating it when necessary."""
+
+    workspace_slug = get_demo_workspace_slug()
 
     workspace = session.scalar(
         select(Workspace).where(
-            Workspace.slug == DEMO_WORKSPACE_SLUG
+            Workspace.slug == workspace_slug
         )
     )
 
     if workspace is not None:
         workspace.name = DEMO_WORKSPACE_NAME
+        workspace.slug = workspace_slug
         workspace.is_active = True
+
         session.flush()
+
         return workspace
 
     workspace = Workspace(
         name=DEMO_WORKSPACE_NAME,
-        slug=DEMO_WORKSPACE_SLUG,
+        slug=workspace_slug,
         is_active=True,
     )
 
@@ -57,9 +77,10 @@ def clear_existing_demo_data(
     workspace_id: Any,
 ) -> None:
     """
-    Remove existing insurance records for only the demo workspace.
+    Remove existing insurance records for the demo workspace.
 
-    Deletion order respects foreign-key relationships.
+    Users are intentionally preserved so administrator and frontend
+    accounts survive repeated insurance-data reseeding.
     """
 
     deletion_order = [
@@ -87,6 +108,8 @@ def insert_carriers(
     workspace: Workspace,
     carrier_rows: list[dict[str, Any]],
 ) -> dict[str, Carrier]:
+    """Insert carriers and return them by carrier code."""
+
     carrier_lookup: dict[str, Carrier] = {}
 
     for carrier_data in carrier_rows:
@@ -111,6 +134,8 @@ def insert_plans(
     plan_rows: list[dict[str, Any]],
     carriers: dict[str, Carrier],
 ) -> dict[str, Plan]:
+    """Insert plans and return them by plan code."""
+
     plan_lookup: dict[str, Plan] = {}
 
     for plan_data in plan_rows:
@@ -145,6 +170,8 @@ def insert_agents(
     workspace: Workspace,
     agent_rows: list[dict[str, Any]],
 ) -> dict[str, Agent]:
+    """Insert agents and return them by NPN."""
+
     agent_lookup: dict[str, Agent] = {}
 
     for agent_data in agent_rows:
@@ -171,6 +198,8 @@ def insert_customers(
     workspace: Workspace,
     customer_rows: list[dict[str, Any]],
 ) -> dict[str, Customer]:
+    """Insert customers and return them by customer number."""
+
     customer_lookup: dict[str, Customer] = {}
 
     for customer_data in customer_rows:
@@ -186,7 +215,10 @@ def insert_customers(
         )
 
         session.add(customer)
-        customer_lookup[customer.customer_number] = customer
+
+        customer_lookup[
+            customer.customer_number
+        ] = customer
 
     session.flush()
 
@@ -202,45 +234,58 @@ def insert_policies(
     agents: dict[str, Agent],
     customers: dict[str, Customer],
 ) -> dict[tuple[str, str], Policy]:
+    """Insert policies and return them by source identity."""
+
     policy_lookup: dict[tuple[str, str], Policy] = {}
 
     for policy_data in policy_rows:
-        carrier = carriers.get(policy_data["carrier_code"])
-        plan = plans.get(policy_data["plan_code"])
-        agent = agents.get(policy_data["agent_npn"])
+        carrier = carriers.get(
+            policy_data["carrier_code"]
+        )
+
+        plan = plans.get(
+            policy_data["plan_code"]
+        )
+
+        agent = agents.get(
+            policy_data["agent_npn"]
+        )
+
         customer = customers.get(
             policy_data["customer_number"]
         )
 
+        source_record_id = policy_data[
+            "source_record_id"
+        ]
+
         if carrier is None:
             raise ValueError(
                 "Carrier not found for policy "
-                f"{policy_data['source_record_id']}"
+                f"{source_record_id}"
             )
 
         if plan is None:
             raise ValueError(
                 "Plan not found for policy "
-                f"{policy_data['source_record_id']}"
+                f"{source_record_id}"
             )
 
         if agent is None:
             raise ValueError(
                 "Agent not found for policy "
-                f"{policy_data['source_record_id']}"
+                f"{source_record_id}"
             )
 
         if customer is None:
             raise ValueError(
                 "Customer not found for policy "
-                f"{policy_data['source_record_id']}"
+                f"{source_record_id}"
             )
 
         policy = Policy(
             workspace_id=workspace.id,
-            source_record_id=policy_data[
-                "source_record_id"
-            ],
+            source_record_id=source_record_id,
             policy_number=policy_data["policy_number"],
             customer_id=customer.id,
             carrier_id=carrier.id,
@@ -273,6 +318,8 @@ def insert_payments(
     payment_rows: list[dict[str, Any]],
     policies: dict[tuple[str, str], Policy],
 ) -> None:
+    """Insert payment records for generated policies."""
+
     for payment_data in payment_rows:
         policy_key = (
             payment_data["policy_source_system"],
@@ -310,6 +357,8 @@ def insert_commissions(
     policies: dict[tuple[str, str], Policy],
     agents: dict[str, Agent],
 ) -> None:
+    """Insert commission records for generated policies."""
+
     for commission_data in commission_rows:
         policy_key = (
             commission_data["policy_source_system"],
@@ -317,11 +366,14 @@ def insert_commissions(
         )
 
         policy = policies.get(policy_key)
-        agent = agents.get(commission_data["agent_npn"])
+        agent = agents.get(
+            commission_data["agent_npn"]
+        )
 
         if policy is None:
             raise ValueError(
-                f"Policy not found for commission {policy_key}"
+                "Policy not found for commission "
+                f"{policy_key}"
             )
 
         if agent is None:
@@ -353,10 +405,118 @@ def insert_commissions(
     session.flush()
 
 
+def normalize_demo_admin_email() -> str:
+    """Return the configured demo administrator email."""
+
+    return settings.demo_admin_email.strip().lower()
+
+
+def get_demo_admin(
+    session: Session,
+    workspace: Workspace,
+) -> User | None:
+    """Return the configured demo administrator."""
+
+    return session.scalar(
+        select(User).where(
+            User.workspace_id == workspace.id,
+            User.email == normalize_demo_admin_email(),
+        )
+    )
+
+
+def create_demo_admin(
+    session: Session,
+    workspace: Workspace,
+) -> User:
+    """Create the configured demo administrator."""
+
+    admin = User(
+        workspace_id=workspace.id,
+        email=normalize_demo_admin_email(),
+        full_name=(
+            settings.demo_admin_full_name.strip()
+        ),
+        password_hash=hash_password(
+            settings.demo_admin_password
+        ),
+        role="administrator",
+        is_active=True,
+    )
+
+    session.add(admin)
+    session.flush()
+
+    return admin
+
+
+def synchronize_demo_admin(
+    session: Session,
+    workspace: Workspace,
+) -> tuple[User, str, list[str]]:
+    """
+    Create or synchronize the demo administrator.
+
+    Returns the user, action performed, and updated fields.
+    """
+
+    admin = get_demo_admin(
+        session=session,
+        workspace=workspace,
+    )
+
+    if admin is None:
+        admin = create_demo_admin(
+            session=session,
+            workspace=workspace,
+        )
+
+        return admin, "created", []
+
+    updated_fields: list[str] = []
+
+    expected_full_name = (
+        settings.demo_admin_full_name.strip()
+    )
+
+    if admin.full_name != expected_full_name:
+        admin.full_name = expected_full_name
+        updated_fields.append("full_name")
+
+    if admin.role != "administrator":
+        admin.role = "administrator"
+        updated_fields.append("role")
+
+    if not admin.is_active:
+        admin.is_active = True
+        updated_fields.append("is_active")
+
+    password_matches = verify_password(
+        plain_password=settings.demo_admin_password,
+        password_hash=admin.password_hash,
+    )
+
+    if not password_matches:
+        admin.password_hash = hash_password(
+            settings.demo_admin_password
+        )
+
+        updated_fields.append("password_hash")
+
+    session.flush()
+
+    if updated_fields:
+        return admin, "updated", updated_fields
+
+    return admin, "already synchronized", []
+
+
 def count_workspace_records(
     session: Session,
     workspace: Workspace,
 ) -> dict[str, int]:
+    """Count insurance records belonging to the demo workspace."""
+
     models = {
         "carriers": Carrier,
         "plans": Plan,
@@ -373,7 +533,9 @@ def count_workspace_records(
         count = session.scalar(
             select(func.count())
             .select_from(model)
-            .where(model.workspace_id == workspace.id)
+            .where(
+                model.workspace_id == workspace.id
+            )
         )
 
         counts[name] = int(count or 0)
@@ -381,12 +543,33 @@ def count_workspace_records(
     return counts
 
 
+def count_workspace_users(
+    session: Session,
+    workspace: Workspace,
+) -> int:
+    """Count users belonging to the demo workspace."""
+
+    count = session.scalar(
+        select(func.count())
+        .select_from(User)
+        .where(
+            User.workspace_id == workspace.id
+        )
+    )
+
+    return int(count or 0)
+
+
 def seed_demo_data() -> dict[str, Any]:
+    """Seed insurance records and the demo administrator."""
+
     dataset = build_demo_dataset()
 
     with SessionLocal() as session:
         try:
-            workspace = get_or_create_workspace(session)
+            workspace = get_or_create_workspace(
+                session
+            )
 
             clear_existing_demo_data(
                 session=session,
@@ -443,17 +626,44 @@ def seed_demo_data() -> dict[str, Any]:
                 agents=agents,
             )
 
+            (
+                demo_admin,
+                demo_admin_status,
+                demo_admin_updated_fields,
+            ) = synchronize_demo_admin(
+                session=session,
+                workspace=workspace,
+            )
+
             session.commit()
 
-            counts = count_workspace_records(
+            record_counts = count_workspace_records(
+                session=session,
+                workspace=workspace,
+            )
+
+            user_count = count_workspace_users(
                 session=session,
                 workspace=workspace,
             )
 
             return {
                 "workspace_id": str(workspace.id),
+                "workspace_name": workspace.name,
                 "workspace_slug": workspace.slug,
-                "record_counts": counts,
+                "record_counts": record_counts,
+                "user_count": user_count,
+                "demo_admin": {
+                    "id": str(demo_admin.id),
+                    "email": demo_admin.email,
+                    "full_name": demo_admin.full_name,
+                    "role": demo_admin.role,
+                    "is_active": demo_admin.is_active,
+                    "status": demo_admin_status,
+                    "updated_fields": (
+                        demo_admin_updated_fields
+                    ),
+                },
                 "duplicate_policy_numbers": dataset[
                     "metadata"
                 ]["duplicate_policy_numbers"],
@@ -467,46 +677,108 @@ def seed_demo_data() -> dict[str, Any]:
             raise
 
 
+def print_seed_result(
+    result: dict[str, Any],
+) -> None:
+    """Print a human-readable seed summary."""
+
+    print()
+    print("InsightOps AI demo environment seeded successfully")
+    print("=" * 54)
+
+    print(
+        f"Workspace:    {result['workspace_slug']}"
+    )
+    print(
+        f"Workspace ID: {result['workspace_id']}"
+    )
+
+    print()
+    print("Inserted insurance record counts:")
+
+    for name, count in result[
+        "record_counts"
+    ].items():
+        print(f"  {name:<12} {count}")
+
+    print()
+    print(
+        "Workspace users: "
+        f"{result['user_count']}"
+    )
+
+    demo_admin = result["demo_admin"]
+
+    print()
+    print("Demo administrator:")
+    print(
+        f"  Status:     {demo_admin['status']}"
+    )
+    print(
+        f"  Email:      {demo_admin['email']}"
+    )
+    print(
+        f"  Full name:  {demo_admin['full_name']}"
+    )
+    print(
+        f"  Role:       {demo_admin['role']}"
+    )
+    print(
+        f"  Active:     {demo_admin['is_active']}"
+    )
+
+    if demo_admin["updated_fields"]:
+        print(
+            "  Updated:    "
+            + ", ".join(
+                demo_admin["updated_fields"]
+            )
+        )
+
+    print()
+    print(
+        "Intentional duplicate policy numbers:"
+    )
+
+    for policy_number in result[
+        "duplicate_policy_numbers"
+    ]:
+        print(f"  {policy_number}")
+
+    print()
+    print(
+        "Intentional missing-payment policies:"
+    )
+
+    for policy_number in result[
+        "missing_payment_policy_numbers"
+    ]:
+        print(f"  {policy_number}")
+
+    print()
+    print(
+        "The demo administrator password was loaded "
+        "from DEMO_ADMIN_PASSWORD."
+    )
+
+
 def main() -> int:
+    """Run the demo environment seed process."""
+
     try:
         result = seed_demo_data()
-
-        print()
-        print("InsightOps AI demo data seeded successfully")
-        print("=" * 50)
-        print(f"Workspace: {result['workspace_slug']}")
-        print(f"Workspace ID: {result['workspace_id']}")
-        print()
-
-        print("Inserted record counts:")
-
-        for name, count in result["record_counts"].items():
-            print(f"  {name:<12} {count}")
-
-        print()
-        print("Intentional duplicate policy numbers:")
-
-        for policy_number in result[
-            "duplicate_policy_numbers"
-        ]:
-            print(f"  {policy_number}")
-
-        print()
-        print("Intentional missing-payment policies:")
-
-        for policy_number in result[
-            "missing_payment_policy_numbers"
-        ]:
-            print(f"  {policy_number}")
+        print_seed_result(result)
 
         return 0
 
     except Exception as error:
         print(
-            f"Failed to seed demo data: {error}",
+            f"Failed to seed demo environment: {error}",
             file=sys.stderr,
         )
+
         traceback.print_exc()
+
         return 1
 
 

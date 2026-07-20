@@ -6,6 +6,7 @@ from apps.api.app.db.base import Base
 
 EXPECTED_TABLES = {
     "workspaces",
+    "users",
     "insurance_carriers",
     "insurance_plans",
     "insurance_agents",
