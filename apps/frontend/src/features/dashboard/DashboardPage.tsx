@@ -1,9 +1,24 @@
-import { useQuery } from "@tanstack/react-query";
+import {
+  useState,
+} from "react";
+
+import {
+  useQuery,
+} from "@tanstack/react-query";
 
 import { apiClient } from "../../api/client";
 import { useAuth } from "../auth/AuthContext";
+import DocumentsWorkspace from "../documents/DocumentsWorkspace";
+import UploadDocumentModal from "../documents/UploadDocumentModal";
 
-import type { HealthResponse } from "../../types/health";
+import type {
+  HealthResponse,
+} from "../../types/health";
+
+
+type DashboardSection =
+  | "overview"
+  | "documents";
 
 
 interface DashboardMetric {
@@ -34,15 +49,16 @@ const DASHBOARD_METRICS: DashboardMetric[] = [
     status: "positive",
   },
   {
-    label: "Documents processed",
+    label: "Documents uploaded",
     value: "0",
-    change: "Upload workflow starts on Day 4",
+    change: "Upload workflow is now active",
     status: "neutral",
   },
 ];
 
 
-async function fetchHealth(): Promise<HealthResponse> {
+async function fetchHealth():
+Promise<HealthResponse> {
   return apiClient.get<HealthResponse>(
     "/health",
     {
@@ -53,12 +69,17 @@ async function fetchHealth(): Promise<HealthResponse> {
 }
 
 
-function getInitials(fullName: string): string {
+function getInitials(
+  fullName: string,
+): string {
   return fullName
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
-    .map((namePart) => namePart[0]?.toUpperCase())
+    .map(
+      (namePart) =>
+        namePart[0]?.toUpperCase(),
+    )
     .join("");
 }
 
@@ -71,6 +92,18 @@ export default function DashboardPage() {
     logout,
   } = useAuth();
 
+  const [
+    activeSection,
+    setActiveSection,
+  ] = useState<DashboardSection>(
+    "overview",
+  );
+
+  const [
+    isUploadModalOpen,
+    setIsUploadModalOpen,
+  ] = useState(false);
+
   const healthQuery = useQuery({
     queryKey: ["api-health"],
     queryFn: fetchHealth,
@@ -82,15 +115,16 @@ export default function DashboardPage() {
     return null;
   }
 
-  const currentDate = new Intl.DateTimeFormat(
-    "en",
-    {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    },
-  ).format(new Date());
+  const currentDate =
+    new Intl.DateTimeFormat(
+      "en",
+      {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      },
+    ).format(new Date());
 
   return (
     <div className="dashboard-layout">
@@ -102,7 +136,10 @@ export default function DashboardPage() {
 
           <div>
             <strong>InsightOps</strong>
-            <span>Operations intelligence</span>
+
+            <span>
+              Operations intelligence
+            </span>
           </div>
         </div>
 
@@ -113,16 +150,30 @@ export default function DashboardPage() {
           <p>Workspace</p>
 
           <button
-            className="sidebar-navigation-item active"
+            className={
+              activeSection === "overview"
+                ? "sidebar-navigation-item active"
+                : "sidebar-navigation-item"
+            }
             type="button"
+            onClick={() => {
+              setActiveSection("overview");
+            }}
           >
             <span>01</span>
             Overview
           </button>
 
           <button
-            className="sidebar-navigation-item"
+            className={
+              activeSection === "documents"
+                ? "sidebar-navigation-item active"
+                : "sidebar-navigation-item"
+            }
             type="button"
+            onClick={() => {
+              setActiveSection("documents");
+            }}
           >
             <span>02</span>
             Documents
@@ -185,8 +236,16 @@ export default function DashboardPage() {
           </div>
 
           <div className="sidebar-user-details">
-            <strong>{user.full_name}</strong>
-            <span>{user.role.replaceAll("_", " ")}</span>
+            <strong>
+              {user.full_name}
+            </strong>
+
+            <span>
+              {user.role.replaceAll(
+                "_",
+                " ",
+              )}
+            </span>
           </div>
 
           <button
@@ -202,270 +261,440 @@ export default function DashboardPage() {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div>
-            <p className="dashboard-date">
-              {currentDate}
-            </p>
-
-            <h1>
-              Good to see you,{" "}
-              {user.full_name.split(" ")[0]}.
-            </h1>
-
-            <p>
-              Monitor operational data, investigate
-              discrepancies, and generate auditable
-              intelligence.
-            </p>
-          </div>
-
-          <div className="dashboard-header-actions">
-            <div className="environment-status">
-              <span
-                className={
-                  healthQuery.data?.status === "healthy"
-                    ? "environment-status-dot healthy"
-                    : "environment-status-dot"
-                }
-              />
-
+        {activeSection === "overview" && (
+          <>
+            <header className="dashboard-header">
               <div>
-                <strong>
-                  {healthQuery.isPending
-                    ? "Checking services"
-                    : healthQuery.isError
-                      ? "API unavailable"
-                      : "Systems operational"}
-                </strong>
+                <p className="dashboard-date">
+                  {currentDate}
+                </p>
 
+                <h1>
+                  Good to see you,{" "}
+                  {
+                    user.full_name
+                      .split(" ")[0]
+                  }.
+                </h1>
+
+                <p>
+                  Monitor operational data,
+                  investigate discrepancies,
+                  and generate auditable
+                  intelligence.
+                </p>
+              </div>
+
+              <div className="dashboard-header-actions">
+                <div className="environment-status">
+                  <span
+                    className={
+                      healthQuery.data?.status
+                        === "healthy"
+                        ? (
+                          "environment-status-dot "
+                          + "healthy"
+                        )
+                        : "environment-status-dot"
+                    }
+                  />
+
+                  <div>
+                    <strong>
+                      {
+                        healthQuery.isPending
+                          ? "Checking services"
+                          : healthQuery.isError
+                            ? "API unavailable"
+                            : "Systems operational"
+                      }
+                    </strong>
+
+                    <span>
+                      {
+                        healthQuery.data
+                          ? (
+                            `API v${
+                              healthQuery.data.version
+                            }`
+                          )
+                          : "Backend connection"
+                      }
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  className={
+                    "dashboard-primary-action"
+                  }
+                  type="button"
+                  onClick={() => {
+                    setIsUploadModalOpen(true);
+                  }}
+                >
+                  Upload document
+                </button>
+              </div>
+            </header>
+
+            <section className="workspace-summary">
+              <div>
                 <span>
-                  {healthQuery.data
-                    ? `API v${healthQuery.data.version}`
-                    : "Backend connection"}
+                  Current workspace
                 </span>
-              </div>
-            </div>
 
-            <button
-              className="dashboard-primary-action"
-              type="button"
-            >
-              Upload document
-            </button>
-          </div>
-        </header>
-
-        <section className="workspace-summary">
-          <div>
-            <span>Current workspace</span>
-            <strong>
-              {workspaceName ?? "InsightOps Workspace"}
-            </strong>
-          </div>
-
-          <div>
-            <span>Workspace ID</span>
-            <strong>
-              {workspaceSlug ?? "Not available"}
-            </strong>
-          </div>
-
-          <div>
-            <span>Access level</span>
-            <strong>
-              {user.role.replaceAll("_", " ")}
-            </strong>
-          </div>
-        </section>
-
-        <section className="dashboard-metrics">
-          {DASHBOARD_METRICS.map((metric) => (
-            <article
-              className="dashboard-metric-card"
-              key={metric.label}
-            >
-              <div className="dashboard-metric-header">
-                <span>{metric.label}</span>
-
-                <span
-                  className={`metric-indicator ${metric.status}`}
-                />
+                <strong>
+                  {
+                    workspaceName
+                    ?? "InsightOps Workspace"
+                  }
+                </strong>
               </div>
 
-              <strong>{metric.value}</strong>
-
-              <p>{metric.change}</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="dashboard-content-grid">
-          <article className="dashboard-panel operational-panel">
-            <div className="dashboard-panel-header">
               <div>
-                <p className="dashboard-panel-label">
-                  Reconciliation overview
-                </p>
+                <span>Workspace ID</span>
 
-                <h2>Operational exceptions</h2>
+                <strong>
+                  {
+                    workspaceSlug
+                    ?? "Not available"
+                  }
+                </strong>
               </div>
 
-              <button type="button">
-                View all
-              </button>
-            </div>
-
-            <div className="exception-list">
-              <div className="exception-item">
-                <span className="exception-number">
-                  08
-                </span>
-
-                <div>
-                  <strong>
-                    Active policies without payments
-                  </strong>
-
-                  <p>
-                    Intentional validation cases ready
-                    for investigation.
-                  </p>
-                </div>
-
-                <span className="exception-badge warning">
-                  Review
-                </span>
-              </div>
-
-              <div className="exception-item">
-                <span className="exception-number">
-                  05
-                </span>
-
-                <div>
-                  <strong>
-                    Duplicate policy numbers
-                  </strong>
-
-                  <p>
-                    Matching business identifiers exist
-                    across source records.
-                  </p>
-                </div>
-
-                <span className="exception-badge warning">
-                  Review
-                </span>
-              </div>
-
-              <div className="exception-item">
-                <span className="exception-number">
-                  85
-                </span>
-
-                <div>
-                  <strong>
-                    Commissions linked successfully
-                  </strong>
-
-                  <p>
-                    Every generated payment has a
-                    corresponding commission record.
-                  </p>
-                </div>
-
-                <span className="exception-badge positive">
-                  Matched
-                </span>
-              </div>
-            </div>
-          </article>
-
-          <article className="dashboard-panel activity-panel">
-            <div className="dashboard-panel-header">
               <div>
-                <p className="dashboard-panel-label">
-                  Platform status
-                </p>
+                <span>Access level</span>
 
-                <h2>Build progress</h2>
+                <strong>
+                  {
+                    user.role.replaceAll(
+                      "_",
+                      " ",
+                    )
+                  }
+                </strong>
               </div>
-            </div>
+            </section>
 
-            <div className="build-progress">
-              <div className="build-progress-header">
-                <strong>30%</strong>
-                <span>3 of 10 days</span>
-              </div>
+            <section className="dashboard-metrics">
+              {DASHBOARD_METRICS.map(
+                (metric) => (
+                  <article
+                    className={
+                      "dashboard-metric-card"
+                    }
+                    key={metric.label}
+                  >
+                    <div
+                      className={
+                        "dashboard-metric-header"
+                      }
+                    >
+                      <span>
+                        {metric.label}
+                      </span>
 
-              <div className="build-progress-track">
-                <span />
-              </div>
-            </div>
+                      <span
+                        className={
+                          `metric-indicator ${
+                            metric.status
+                          }`
+                        }
+                      />
+                    </div>
 
-            <div className="activity-timeline">
-              <div className="activity-entry complete">
-                <span />
+                    <strong>
+                      {metric.value}
+                    </strong>
 
-                <div>
-                  <strong>
-                    Platform foundation
-                  </strong>
+                    <p>
+                      {metric.change}
+                    </p>
+                  </article>
+                ),
+              )}
+            </section>
 
-                  <p>
-                    Docker services and health checks
-                    configured.
-                  </p>
+            <section className="dashboard-content-grid">
+              <article
+                className={
+                  "dashboard-panel "
+                  + "operational-panel"
+                }
+              >
+                <div
+                  className={
+                    "dashboard-panel-header"
+                  }
+                >
+                  <div>
+                    <p
+                      className={
+                        "dashboard-panel-label"
+                      }
+                    >
+                      Reconciliation overview
+                    </p>
+
+                    <h2>
+                      Operational exceptions
+                    </h2>
+                  </div>
+
+                  <button type="button">
+                    View all
+                  </button>
                 </div>
-              </div>
 
-              <div className="activity-entry complete">
-                <span />
+                <div className="exception-list">
+                  <div className="exception-item">
+                    <span
+                      className={
+                        "exception-number"
+                      }
+                    >
+                      08
+                    </span>
 
-                <div>
-                  <strong>
-                    Insurance data model
-                  </strong>
+                    <div>
+                      <strong>
+                        Active policies without
+                        payments
+                      </strong>
 
-                  <p>
-                    Synthetic operational dataset seeded.
-                  </p>
+                      <p>
+                        Intentional validation
+                        cases ready for
+                        investigation.
+                      </p>
+                    </div>
+
+                    <span
+                      className={
+                        "exception-badge warning"
+                      }
+                    >
+                      Review
+                    </span>
+                  </div>
+
+                  <div className="exception-item">
+                    <span
+                      className={
+                        "exception-number"
+                      }
+                    >
+                      05
+                    </span>
+
+                    <div>
+                      <strong>
+                        Duplicate policy numbers
+                      </strong>
+
+                      <p>
+                        Matching business
+                        identifiers exist across
+                        source records.
+                      </p>
+                    </div>
+
+                    <span
+                      className={
+                        "exception-badge warning"
+                      }
+                    >
+                      Review
+                    </span>
+                  </div>
+
+                  <div className="exception-item">
+                    <span
+                      className={
+                        "exception-number"
+                      }
+                    >
+                      85
+                    </span>
+
+                    <div>
+                      <strong>
+                        Commissions linked
+                        successfully
+                      </strong>
+
+                      <p>
+                        Every generated payment
+                        has a corresponding
+                        commission record.
+                      </p>
+                    </div>
+
+                    <span
+                      className={
+                        "exception-badge positive"
+                      }
+                    >
+                      Matched
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </article>
 
-              <div className="activity-entry current">
-                <span />
+              <article
+                className={
+                  "dashboard-panel "
+                  + "activity-panel"
+                }
+              >
+                <div
+                  className={
+                    "dashboard-panel-header"
+                  }
+                >
+                  <div>
+                    <p
+                      className={
+                        "dashboard-panel-label"
+                      }
+                    >
+                      Platform status
+                    </p>
 
-                <div>
-                  <strong>
-                    Authentication
-                  </strong>
-
-                  <p>
-                    Secure login and protected workspace
-                    active.
-                  </p>
+                    <h2>
+                      Build progress
+                    </h2>
+                  </div>
                 </div>
-              </div>
 
-              <div className="activity-entry">
-                <span />
+                <div className="build-progress">
+                  <div
+                    className={
+                      "build-progress-header"
+                    }
+                  >
+                    <strong>40%</strong>
 
-                <div>
-                  <strong>
-                    Document ingestion
-                  </strong>
+                    <span>
+                      4 of 10 days
+                    </span>
+                  </div>
 
-                  <p>
-                    Scheduled for Day 4.
-                  </p>
+                  <div
+                    className={
+                      "build-progress-track"
+                    }
+                  >
+                    <span
+                      style={{
+                        width: "40%",
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
-            </div>
-          </article>
-        </section>
+
+                <div className="activity-timeline">
+                  <div
+                    className={
+                      "activity-entry complete"
+                    }
+                  >
+                    <span />
+
+                    <div>
+                      <strong>
+                        Platform foundation
+                      </strong>
+
+                      <p>
+                        Docker services and
+                        health checks configured.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={
+                      "activity-entry complete"
+                    }
+                  >
+                    <span />
+
+                    <div>
+                      <strong>
+                        Insurance data model
+                      </strong>
+
+                      <p>
+                        Synthetic operational
+                        dataset seeded.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={
+                      "activity-entry complete"
+                    }
+                  >
+                    <span />
+
+                    <div>
+                      <strong>
+                        Authentication
+                      </strong>
+
+                      <p>
+                        Secure login and
+                        protected workspace
+                        active.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={
+                      "activity-entry current"
+                    }
+                  >
+                    <span />
+
+                    <div>
+                      <strong>
+                        Document ingestion
+                      </strong>
+
+                      <p>
+                        Upload and MinIO storage
+                        workflow active.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </section>
+          </>
+        )}
+
+        {activeSection === "documents" && (
+          <DocumentsWorkspace
+            onUploadClick={() => {
+              setIsUploadModalOpen(true);
+            }}
+          />
+        )}
       </main>
+
+      <UploadDocumentModal
+        isOpen={isUploadModalOpen}
+        onClose={() => {
+          setIsUploadModalOpen(false);
+        }}
+        onUploaded={() => {
+          setActiveSection("documents");
+        }}
+      />
     </div>
   );
 }

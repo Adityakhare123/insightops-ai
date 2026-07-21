@@ -12,8 +12,41 @@ from apps.api.app.services.auth import (
     normalize_email,
     normalize_workspace_slug,
 )
+from apps.api.app.services.documents import (
+    ALLOWED_CONTENT_TYPES,
+    DOCUMENT_TYPE_BY_EXTENSION,
+    MAX_DOCUMENT_SIZE_BYTES,
+    DocumentTooLargeError,
+    DocumentValidationError,
+    InvalidDocumentSignatureError,
+    UnsupportedDocumentTypeError,
+    ValidatedDocument,
+    calculate_sha256,
+    get_file_extension,
+    normalize_content_type,
+    normalize_original_filename,
+    validate_content_type,
+    validate_document_upload,
+    validate_file_signature,
+    validate_file_size,
+)
+from apps.api.app.services.storage import (
+    DownloadedObject,
+    StorageError,
+    StorageObjectNotFoundError,
+    StoredObject,
+    build_storage_object_name,
+    delete_object,
+    download_object,
+    ensure_storage_bucket,
+    object_exists,
+    sanitize_filename,
+    upload_bytes,
+    upload_stream,
+)
 
 __all__ = [
+    # Authentication
     "AuthenticationError",
     "InactiveUserError",
     "DuplicateUserError",
@@ -26,4 +59,36 @@ __all__ = [
     "create_user",
     "authenticate_user",
     "create_user_token_pair",
+
+    # Document validation
+    "MAX_DOCUMENT_SIZE_BYTES",
+    "ALLOWED_CONTENT_TYPES",
+    "DOCUMENT_TYPE_BY_EXTENSION",
+    "DocumentValidationError",
+    "UnsupportedDocumentTypeError",
+    "DocumentTooLargeError",
+    "InvalidDocumentSignatureError",
+    "ValidatedDocument",
+    "normalize_original_filename",
+    "get_file_extension",
+    "normalize_content_type",
+    "validate_content_type",
+    "validate_file_size",
+    "validate_file_signature",
+    "calculate_sha256",
+    "validate_document_upload",
+
+    # Object storage
+    "StorageError",
+    "StorageObjectNotFoundError",
+    "StoredObject",
+    "DownloadedObject",
+    "ensure_storage_bucket",
+    "sanitize_filename",
+    "build_storage_object_name",
+    "upload_bytes",
+    "upload_stream",
+    "download_object",
+    "delete_object",
+    "object_exists",
 ]

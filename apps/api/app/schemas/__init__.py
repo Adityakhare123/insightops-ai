@@ -7,6 +7,14 @@ from apps.api.app.schemas.auth import (
     RegisterRequest,
     TokenPair,
 )
+from apps.api.app.schemas.document import (
+    DocumentDeleteResponse,
+    DocumentListResponse,
+    DocumentRead,
+    DocumentStatus,
+    DocumentType,
+    DocumentUploadResponse,
+)
 from apps.api.app.schemas.user import (
     CurrentUserResponse,
     UserBase,
@@ -16,11 +24,14 @@ from apps.api.app.schemas.user import (
 )
 
 __all__ = [
+    # User schemas
     "UserRole",
     "UserBase",
     "UserCreate",
     "UserRead",
     "CurrentUserResponse",
+
+    # Authentication schemas
     "RegisterRequest",
     "LoginRequest",
     "TokenPair",
@@ -28,4 +39,12 @@ __all__ = [
     "RefreshTokenRequest",
     "RefreshTokenResponse",
     "MessageResponse",
+
+    # Document schemas
+    "DocumentStatus",
+    "DocumentType",
+    "DocumentRead",
+    "DocumentUploadResponse",
+    "DocumentListResponse",
+    "DocumentDeleteResponse",
 ]
