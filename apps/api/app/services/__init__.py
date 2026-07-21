@@ -30,6 +30,24 @@ from apps.api.app.services.documents import (
     validate_file_signature,
     validate_file_size,
 )
+from apps.api.app.services.extraction import (
+    DEFAULT_OCR_LANGUAGE,
+    PDF_RENDER_DPI,
+    SUPPORTED_EXTRACTION_EXTENSIONS,
+    CorruptDocumentError,
+    DocumentExtractionError,
+    DocumentExtractionResult,
+    ExtractedPage,
+    ExtractionDependencyError,
+    OCRTextResult,
+    UnsupportedExtractionTypeError,
+    extract_csv,
+    extract_document,
+    extract_excel,
+    extract_image,
+    extract_pdf,
+    normalize_extracted_text,
+)
 from apps.api.app.services.storage import (
     DownloadedObject,
     StorageError,
@@ -44,6 +62,24 @@ from apps.api.app.services.storage import (
     upload_bytes,
     upload_stream,
 )
+from apps.api.app.services.document_processing import (
+    MAX_PROCESSING_ERROR_LENGTH,
+    PROCESSOR_NAME,
+    PROCESSOR_VERSION,
+    DocumentProcessingError,
+    DocumentProcessingRunNotFoundError,
+    ProcessingDocumentNotFoundError,
+    build_document_page,
+    build_extraction_metadata,
+    create_document_processing_run,
+    get_next_attempt_number,
+    get_processing_run,
+    mark_processing_run_failed,
+    normalize_processing_error,
+    process_document_run,
+    utc_now,
+)
+
 
 __all__ = [
     # Authentication
@@ -78,6 +114,24 @@ __all__ = [
     "calculate_sha256",
     "validate_document_upload",
 
+    # Document extraction
+    "DEFAULT_OCR_LANGUAGE",
+    "PDF_RENDER_DPI",
+    "SUPPORTED_EXTRACTION_EXTENSIONS",
+    "DocumentExtractionError",
+    "UnsupportedExtractionTypeError",
+    "CorruptDocumentError",
+    "ExtractionDependencyError",
+    "OCRTextResult",
+    "ExtractedPage",
+    "DocumentExtractionResult",
+    "normalize_extracted_text",
+    "extract_pdf",
+    "extract_image",
+    "extract_csv",
+    "extract_excel",
+    "extract_document",
+
     # Object storage
     "StorageError",
     "StorageObjectNotFoundError",
@@ -91,4 +145,21 @@ __all__ = [
     "download_object",
     "delete_object",
     "object_exists",
+    
+    # Document processing
+    "PROCESSOR_NAME",
+    "PROCESSOR_VERSION",
+    "MAX_PROCESSING_ERROR_LENGTH",
+    "DocumentProcessingError",
+    "DocumentProcessingRunNotFoundError",
+    "ProcessingDocumentNotFoundError",
+    "utc_now",
+    "normalize_processing_error",
+    "get_next_attempt_number",
+    "create_document_processing_run",
+    "get_processing_run",
+    "build_document_page",
+    "build_extraction_metadata",
+    "mark_processing_run_failed",
+    "process_document_run",
 ]

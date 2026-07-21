@@ -1,4 +1,8 @@
 import {
+  useState,
+} from "react";
+
+import {
   useMutation,
   useQuery,
   useQueryClient,
@@ -6,16 +10,19 @@ import {
 
 import { ApiError } from "../../api/client";
 
+import type {
+  DocumentRead,
+} from "../../types/document";
+
+import ExtractionReview from "./ExtractionReview";
+
 import {
   deleteDocument,
   downloadDocument,
   listDocuments,
+  processDocument,
   saveDownloadedDocument,
 } from "./documentsApi";
-
-import type {
-  DocumentRead,
-} from "../../types/document";
 
 
 interface DocumentsWorkspaceProps {
@@ -30,13 +37,15 @@ function formatFileSize(
     return `${sizeInBytes} B`;
   }
 
-  const kilobytes = sizeInBytes / 1024;
+  const kilobytes =
+    sizeInBytes / 1024;
 
   if (kilobytes < 1024) {
     return `${kilobytes.toFixed(1)} KB`;
   }
 
-  const megabytes = kilobytes / 1024;
+  const megabytes =
+    kilobytes / 1024;
 
   return `${megabytes.toFixed(2)} MB`;
 }
@@ -89,10 +98,37 @@ function getErrorMessage(
 }
 
 
+function getProcessButtonLabel(
+  document: DocumentRead,
+): string {
+  if (
+    document.status === "queued"
+    || document.status === "processing"
+  ) {
+    return "Processing…";
+  }
+
+  if (document.status === "processed") {
+    return "Reprocess";
+  }
+
+  if (document.status === "failed") {
+    return "Retry";
+  }
+
+  return "Process";
+}
+
+
 export default function DocumentsWorkspace({
   onUploadClick,
 }: DocumentsWorkspaceProps) {
   const queryClient = useQueryClient();
+
+  const [
+    selectedDocumentId,
+    setSelectedDocumentId,
+  ] = useState<string | null>(null);
 
   const documentsQuery = useQuery({
     queryKey: ["documents"],
@@ -101,6 +137,7 @@ export default function DocumentsWorkspace({
         limit: 100,
         offset: 0,
       }),
+    refetchInterval: 3_000,
   });
 
   const downloadMutation = useMutation({
@@ -115,10 +152,56 @@ export default function DocumentsWorkspace({
     },
   });
 
+  const processMutation = useMutation({
+    mutationFn: (
+      documentId: string,
+    ) => processDocument(
+      documentId,
+      "eng",
+    ),
+
+    onSuccess: async (
+      _response,
+      documentId,
+    ) => {
+      setSelectedDocumentId(
+        documentId,
+      );
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["documents"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [
+            "document-processing-runs",
+            documentId,
+          ],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [
+            "document-pages",
+            documentId,
+          ],
+        }),
+      ]);
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: deleteDocument,
 
-    onSuccess: async () => {
+    onSuccess: async (
+      _response,
+      documentId,
+    ) => {
+      if (
+        selectedDocumentId
+        === documentId
+      ) {
+        setSelectedDocumentId(null);
+      }
+
       await queryClient.invalidateQueries({
         queryKey: ["documents"],
       });
@@ -143,19 +226,50 @@ export default function DocumentsWorkspace({
   }
 
 
+  function handleProcess(
+    document: DocumentRead,
+  ): void {
+    if (
+      document.status === "queued"
+      || document.status === "processing"
+    ) {
+      setSelectedDocumentId(
+        document.id,
+      );
+
+      return;
+    }
+
+    processMutation.mutate(
+      document.id,
+    );
+  }
+
+
   const documents =
     documentsQuery.data?.items ?? [];
 
+  const selectedDocument =
+    documents.find(
+      (document) =>
+        document.id
+        === selectedDocumentId,
+    ) ?? null;
+
   const actionError =
-    downloadMutation.isError
+    processMutation.isError
       ? getErrorMessage(
-          downloadMutation.error,
+          processMutation.error,
         )
-      : deleteMutation.isError
+      : downloadMutation.isError
         ? getErrorMessage(
-            deleteMutation.error,
+            downloadMutation.error,
           )
-        : null;
+        : deleteMutation.isError
+          ? getErrorMessage(
+              deleteMutation.error,
+            )
+          : null;
 
 
   return (
@@ -169,8 +283,8 @@ export default function DocumentsWorkspace({
           <h1>Workspace documents</h1>
 
           <p>
-            Upload, review, download, and manage
-            source documents for this workspace.
+            Upload, process, review, download,
+            and manage source documents.
           </p>
         </div>
 
@@ -260,9 +374,11 @@ export default function DocumentsWorkspace({
               documentsQuery.isFetching
             }
           >
-            {documentsQuery.isFetching
-              ? "Refreshing…"
-              : "Refresh"}
+            {
+              documentsQuery.isFetching
+                ? "Refreshing…"
+                : "Refresh"
+            }
           </button>
         </div>
 
@@ -334,6 +450,7 @@ export default function DocumentsWorkspace({
                     <th>Type</th>
                     <th>Size</th>
                     <th>Status</th>
+                    <th>Pages</th>
                     <th>Uploaded</th>
                     <th aria-label="Actions" />
                   </tr>
@@ -341,108 +458,174 @@ export default function DocumentsWorkspace({
 
                 <tbody>
                   {documents.map(
-                    (document) => (
-                      <tr key={document.id}>
-                        <td>
-                          <div className="document-name-cell">
-                            <div className="document-file-icon">
-                              {
-                                document.file_extension
-                                  ?.replace(".", "")
-                                  .slice(0, 4)
-                                  .toUpperCase()
-                                ?? "FILE"
-                              }
-                            </div>
+                    (document) => {
+                      const processingIsActive =
+                        document.status
+                          === "queued"
+                        || document.status
+                          === "processing";
 
-                            <div>
-                              <strong>
+                      return (
+                        <tr key={document.id}>
+                          <td>
+                            <div className="document-name-cell">
+                              <div className="document-file-icon">
                                 {
-                                  document.original_filename
+                                  document.file_extension
+                                    ?.replace(".", "")
+                                    .slice(0, 4)
+                                    .toUpperCase()
+                                  ?? "FILE"
                                 }
-                              </strong>
+                              </div>
 
-                              <span>
-                                {document.id}
-                              </span>
+                              <div>
+                                <strong>
+                                  {
+                                    document.original_filename
+                                  }
+                                </strong>
+
+                                <span>
+                                  {document.id}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        <td>
-                          <span className="document-type">
+                          <td>
+                            <span className="document-type">
+                              {
+                                getDocumentTypeLabel(
+                                  document,
+                                )
+                              }
+                            </span>
+                          </td>
+
+                          <td>
+                            {formatFileSize(
+                              document.file_size_bytes,
+                            )}
+                          </td>
+
+                          <td>
+                            <span
+                              className={
+                                `document-status ${
+                                  document.status
+                                }`
+                              }
+                            >
+                              {document.status}
+                            </span>
+                          </td>
+
+                          <td>
                             {
-                              getDocumentTypeLabel(
-                                document,
-                              )
+                              document.page_count
+                              ?? "—"
                             }
-                          </span>
-                        </td>
+                          </td>
 
-                        <td>
-                          {formatFileSize(
-                            document.file_size_bytes,
-                          )}
-                        </td>
+                          <td>
+                            {formatDocumentDate(
+                              document.created_at,
+                            )}
+                          </td>
 
-                        <td>
-                          <span
-                            className={
-                              `document-status ${
-                                document.status
-                              }`
-                            }
-                          >
-                            {document.status}
-                          </span>
-                        </td>
+                          <td>
+                            <div className="document-actions">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleProcess(
+                                    document,
+                                  );
+                                }}
+                                disabled={
+                                  processMutation.isPending
+                                  && processMutation.variables
+                                    === document.id
+                                }
+                              >
+                                {
+                                  processMutation.isPending
+                                  && processMutation.variables
+                                    === document.id
+                                    ? "Queueing…"
+                                    : getProcessButtonLabel(
+                                        document,
+                                      )
+                                }
+                              </button>
 
-                        <td>
-                          {formatDocumentDate(
-                            document.created_at,
-                          )}
-                        </td>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedDocumentId(
+                                    document.id,
+                                  );
+                                }}
+                              >
+                                Review
+                              </button>
 
-                        <td>
-                          <div className="document-actions">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                downloadMutation.mutate(
-                                  document,
-                                );
-                              }}
-                              disabled={
-                                downloadMutation.isPending
-                              }
-                            >
-                              Download
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  downloadMutation.mutate(
+                                    document,
+                                  );
+                                }}
+                                disabled={
+                                  downloadMutation.isPending
+                                }
+                              >
+                                Download
+                              </button>
 
-                            <button
-                              className="danger"
-                              type="button"
-                              onClick={() => {
-                                void handleDelete(
-                                  document,
-                                );
-                              }}
-                              disabled={
-                                deleteMutation.isPending
-                              }
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ),
+                              <button
+                                className="danger"
+                                type="button"
+                                onClick={() => {
+                                  void handleDelete(
+                                    document,
+                                  );
+                                }}
+                                disabled={
+                                  deleteMutation.isPending
+                                  || processingIsActive
+                                }
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    },
                   )}
                 </tbody>
               </table>
             </div>
           )}
       </section>
+
+      {selectedDocument && (
+        <ExtractionReview
+          document={selectedDocument}
+          onClose={() => {
+            setSelectedDocumentId(null);
+          }}
+          onProcess={handleProcess}
+          isProcessing={
+            processMutation.isPending
+            && processMutation.variables
+              === selectedDocument.id
+          }
+        />
+      )}
     </section>
   );
 }

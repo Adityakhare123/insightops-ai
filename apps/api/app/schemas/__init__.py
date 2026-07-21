@@ -15,6 +15,15 @@ from apps.api.app.schemas.document import (
     DocumentType,
     DocumentUploadResponse,
 )
+from apps.api.app.schemas.document_processing import (
+    DocumentPageListResponse,
+    DocumentPageRead,
+    DocumentPageStatus,
+    DocumentProcessingRunListResponse,
+    DocumentProcessingRunRead,
+    DocumentProcessingStartResponse,
+    ProcessingRunStatus,
+)
 from apps.api.app.schemas.user import (
     CurrentUserResponse,
     UserBase,
@@ -23,15 +32,16 @@ from apps.api.app.schemas.user import (
     UserRole,
 )
 
+
 __all__ = [
-    # User schemas
+    # Users
     "UserRole",
     "UserBase",
     "UserCreate",
     "UserRead",
     "CurrentUserResponse",
 
-    # Authentication schemas
+    # Authentication
     "RegisterRequest",
     "LoginRequest",
     "TokenPair",
@@ -40,11 +50,20 @@ __all__ = [
     "RefreshTokenResponse",
     "MessageResponse",
 
-    # Document schemas
+    # Documents
     "DocumentStatus",
     "DocumentType",
     "DocumentRead",
     "DocumentUploadResponse",
     "DocumentListResponse",
     "DocumentDeleteResponse",
+
+    # Document processing
+    "ProcessingRunStatus",
+    "DocumentPageStatus",
+    "DocumentProcessingRunRead",
+    "DocumentProcessingStartResponse",
+    "DocumentProcessingRunListResponse",
+    "DocumentPageRead",
+    "DocumentPageListResponse",
 ]

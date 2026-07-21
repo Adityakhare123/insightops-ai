@@ -7,16 +7,22 @@ import type {
   DocumentDeleteResponse,
   DocumentListParameters,
   DocumentListResponse,
+  DocumentPageListParameters,
+  DocumentPageListResponse,
+  DocumentProcessingRunListResponse,
+  DocumentProcessingStartResponse,
   DocumentRead,
   DocumentUploadResponse,
   DownloadedDocument,
+  ProcessingRunListParameters,
 } from "../../types/document";
 
 
 function createDocumentQueryString(
   parameters: DocumentListParameters = {},
 ): string {
-  const searchParameters = new URLSearchParams();
+  const searchParameters =
+    new URLSearchParams();
 
   if (parameters.limit !== undefined) {
     searchParameters.set(
@@ -43,6 +49,71 @@ function createDocumentQueryString(
     searchParameters.set(
       "document_type",
       parameters.documentType,
+    );
+  }
+
+  const queryString =
+    searchParameters.toString();
+
+  return queryString
+    ? `?${queryString}`
+    : "";
+}
+
+
+function createProcessingRunQueryString(
+  parameters: ProcessingRunListParameters = {},
+): string {
+  const searchParameters =
+    new URLSearchParams();
+
+  if (parameters.limit !== undefined) {
+    searchParameters.set(
+      "limit",
+      String(parameters.limit),
+    );
+  }
+
+  if (parameters.offset !== undefined) {
+    searchParameters.set(
+      "offset",
+      String(parameters.offset),
+    );
+  }
+
+  const queryString =
+    searchParameters.toString();
+
+  return queryString
+    ? `?${queryString}`
+    : "";
+}
+
+
+function createDocumentPageQueryString(
+  parameters: DocumentPageListParameters = {},
+): string {
+  const searchParameters =
+    new URLSearchParams();
+
+  if (parameters.processingRunId) {
+    searchParameters.set(
+      "processing_run_id",
+      parameters.processingRunId,
+    );
+  }
+
+  if (parameters.limit !== undefined) {
+    searchParameters.set(
+      "limit",
+      String(parameters.limit),
+    );
+  }
+
+  if (parameters.offset !== undefined) {
+    searchParameters.set(
+      "offset",
+      String(parameters.offset),
     );
   }
 
@@ -93,6 +164,63 @@ export function uploadDocument(
       method: "POST",
       body: formData,
     },
+  );
+}
+
+
+export function processDocument(
+  documentId: string,
+  ocrLanguage = "eng",
+): Promise<DocumentProcessingStartResponse> {
+  const searchParameters =
+    new URLSearchParams({
+      ocr_language: ocrLanguage,
+    });
+
+  return apiRequest<DocumentProcessingStartResponse>(
+    (
+      `/documents/${documentId}/process`
+      + `?${searchParameters.toString()}`
+    ),
+    {
+      method: "POST",
+    },
+  );
+}
+
+
+export function listDocumentProcessingRuns(
+  documentId: string,
+  parameters: ProcessingRunListParameters = {},
+): Promise<DocumentProcessingRunListResponse> {
+  const queryString =
+    createProcessingRunQueryString(
+      parameters,
+    );
+
+  return apiClient.get<DocumentProcessingRunListResponse>(
+    (
+      `/documents/${documentId}`
+      + `/processing-runs${queryString}`
+    ),
+  );
+}
+
+
+export function listDocumentPages(
+  documentId: string,
+  parameters: DocumentPageListParameters = {},
+): Promise<DocumentPageListResponse> {
+  const queryString =
+    createDocumentPageQueryString(
+      parameters,
+    );
+
+  return apiClient.get<DocumentPageListResponse>(
+    (
+      `/documents/${documentId}`
+      + `/pages${queryString}`
+    ),
   );
 }
 
