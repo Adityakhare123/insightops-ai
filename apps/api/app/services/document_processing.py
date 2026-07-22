@@ -18,6 +18,9 @@ from apps.api.app.services.extraction import (
     extract_document,
 )
 from apps.api.app.services.storage import download_object
+from apps.api.app.services.rag_indexing import (
+    index_document_pages,
+)
 
 
 PROCESSOR_NAME = "insightops-document-extractor"
@@ -370,7 +373,18 @@ def process_document_run(
         ]
 
         database_session.add_all(
-            document_pages
+    document_pages
+)
+
+        # IDs are required before chunks can reference document_pages.
+        database_session.flush()
+
+        rag_indexing_result = (
+            index_document_pages(
+                database_session,
+                processing_run=processing_run,
+                document_pages=document_pages,
+            )
         )
 
         extraction_metadata = (
@@ -378,6 +392,10 @@ def process_document_run(
                 extraction_result
             )
         )
+
+        extraction_metadata[
+            "rag_index"
+        ] = rag_indexing_result.to_metadata()
 
         completed_at = utc_now()
 

@@ -4,6 +4,9 @@ from sqlalchemy import UniqueConstraint
 
 from apps.api.app.db import models  # noqa: F401
 from apps.api.app.db.base import Base
+from apps.api.app.db.models.document_chunk import (
+    DOCUMENT_CHUNK_EMBEDDING_DIMENSIONS,
+)
 
 
 EXPECTED_TABLES = {
@@ -19,6 +22,7 @@ EXPECTED_TABLES = {
     "documents",
     "document_processing_runs",
     "document_pages",
+    "document_chunks",
 }
 
 
@@ -49,7 +53,8 @@ def test_policy_source_record_constraint_exists() -> None:
 
     unique_constraints = [
         constraint
-        for constraint in policy_table.constraints
+        for constraint
+        in policy_table.constraints
         if isinstance(
             constraint,
             UniqueConstraint,
@@ -59,9 +64,11 @@ def test_policy_source_record_constraint_exists() -> None:
     constraint_columns = {
         tuple(
             column.name
-            for column in constraint.columns
+            for column
+            in constraint.columns
         )
-        for constraint in unique_constraints
+        for constraint
+        in unique_constraints
     }
 
     assert (
@@ -73,7 +80,8 @@ def test_policy_source_record_constraint_exists() -> None:
 
 def test_all_business_tables_have_workspace_id() -> None:
     workspace_scoped_tables = (
-        EXPECTED_TABLES - {"workspaces"}
+        EXPECTED_TABLES
+        - {"workspaces"}
     )
 
     for table_name in workspace_scoped_tables:
@@ -82,8 +90,8 @@ def test_all_business_tables_have_workspace_id() -> None:
         ]
 
         assert "workspace_id" in table.columns, (
-            f"Table '{table_name}' is missing "
-            "workspace_id."
+            f"Table '{table_name}' "
+            "is missing workspace_id."
         )
 
 
@@ -98,11 +106,48 @@ def test_all_tables_have_audit_columns() -> None:
         )
 
         assert "created_at" in table.columns, (
-            f"Table '{table_name}' is missing "
-            "created_at."
+            f"Table '{table_name}' "
+            "is missing created_at."
         )
 
         assert "updated_at" in table.columns, (
-            f"Table '{table_name}' is missing "
-            "updated_at."
+            f"Table '{table_name}' "
+            "is missing updated_at."
         )
+
+
+def test_document_chunk_vector_dimension() -> None:
+    chunk_table = Base.metadata.tables[
+        "document_chunks"
+    ]
+
+    embedding_column = chunk_table.columns[
+        "embedding"
+    ]
+
+    assert getattr(
+        embedding_column.type,
+        "dim",
+        None,
+    ) == DOCUMENT_CHUNK_EMBEDDING_DIMENSIONS
+
+    assert (
+        DOCUMENT_CHUNK_EMBEDDING_DIMENSIONS
+        == 384
+    )
+
+
+def test_document_chunk_hnsw_index_exists() -> None:
+    chunk_table = Base.metadata.tables[
+        "document_chunks"
+    ]
+
+    index_names = {
+        index.name
+        for index in chunk_table.indexes
+    }
+
+    assert (
+        "ix_document_chunks_embedding_hnsw"
+        in index_names
+    )

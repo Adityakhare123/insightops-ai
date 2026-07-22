@@ -7,6 +7,9 @@ from apps.api.app.api.v1.endpoints.auth import (
 from apps.api.app.api.v1.endpoints.documents import (
     router as documents_router,
 )
+from apps.api.app.api.v1.endpoints.rag import (
+    router as rag_router,
+)
 
 
 api_router = APIRouter()
@@ -26,4 +29,10 @@ api_router.include_router(
     documents_router,
     prefix="/documents",
     tags=["documents"],
+)
+
+api_router.include_router(
+    rag_router,
+    prefix="/rag",
+    tags=["rag"],
 )

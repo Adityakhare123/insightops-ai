@@ -31,7 +31,19 @@ from apps.api.app.schemas.user import (
     UserRead,
     UserRole,
 )
-
+from apps.api.app.schemas.rag import (
+    RAGSearchHitRead,
+    RAGSearchRequest,
+    RAGSearchResponse,
+)
+from apps.api.app.schemas.rag import (
+    RAGAnswerRequest,
+    RAGAnswerResponse,
+    RAGCitationRead,
+    RAGSearchHitRead,
+    RAGSearchRequest,
+    RAGSearchResponse,
+)
 
 __all__ = [
     # Users
@@ -66,4 +78,16 @@ __all__ = [
     "DocumentProcessingRunListResponse",
     "DocumentPageRead",
     "DocumentPageListResponse",
+    # RAG
+    "RAGSearchRequest",
+    "RAGSearchHitRead",
+    "RAGSearchResponse",
+    
+    # RAG
+    "RAGSearchRequest",
+    "RAGSearchHitRead",
+    "RAGSearchResponse",
+    "RAGAnswerRequest",
+    "RAGCitationRead",
+    "RAGAnswerResponse",
 ]

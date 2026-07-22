@@ -5,9 +5,12 @@ from uuid import UUID, uuid4
 
 import pymupdf
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from apps.api.app.db.models.document import Document
+from apps.api.app.db.models.document_chunk import (
+    DocumentChunk,
+)
 from apps.api.app.db.models.user import User
 from apps.api.app.db.models.workspace import Workspace
 from apps.api.app.db.session import SessionLocal
@@ -21,7 +24,9 @@ from apps.api.app.services.storage import (
 WORKSPACE_SLUG = "insightops-insurance-demo"
 TEST_PASSWORD = "StrongPassword123!"
 
-PROCESSING_TIMEOUT_SECONDS = 60
+# The first FastEmbed execution may download and initialize
+# the embedding model, so allow additional processing time.
+PROCESSING_TIMEOUT_SECONDS = 180
 PROCESSING_POLL_INTERVAL_SECONDS = 1
 
 
@@ -82,7 +87,8 @@ def cleanup_test_user(
     """
     Remove test documents, MinIO objects, and the test user.
 
-    Database cascades remove processing runs and document pages.
+    Database cascades remove processing runs, document pages,
+    and document chunks.
     """
 
     with SessionLocal() as database_session:
@@ -325,7 +331,9 @@ def test_complete_asynchronous_document_processing_flow() -> None:
             assert completed_run["started_at"] is not None
             assert completed_run["completed_at"] is not None
 
-            processing_run_id = completed_run["id"]
+            processing_run_id = str(
+                completed_run["id"]
+            )
 
             pages_response = client.get(
                 (
@@ -354,8 +362,10 @@ def test_complete_asynchronous_document_processing_flow() -> None:
 
             assert extracted_page["page_number"] == 1
             assert extracted_page["status"] == "completed"
-            assert extracted_page["extraction_method"] == (
-                "pdf_native_text"
+
+            assert (
+                extracted_page["extraction_method"]
+                == "pdf_native_text"
             )
 
             extracted_text = (
@@ -462,6 +472,428 @@ def test_complete_asynchronous_document_processing_flow() -> None:
                 == 1
             )
 
+            # Verify RAG indexing metadata stored on the document.
+            document_rag_metadata = (
+                latest_extraction["rag_index"]
+            )
+
+            assert (
+                document_rag_metadata[
+                    "source_page_count"
+                ]
+                == 1
+            )
+
+            assert (
+                document_rag_metadata["chunk_count"]
+                > 0
+            )
+
+            assert (
+                document_rag_metadata[
+                    "embedded_chunk_count"
+                ]
+                == document_rag_metadata[
+                    "chunk_count"
+                ]
+            )
+
+            assert (
+                document_rag_metadata[
+                    "embedding_provider"
+                ]
+                == "fastembed"
+            )
+
+            assert (
+                document_rag_metadata[
+                    "embedding_model"
+                ]
+                == "BAAI/bge-small-en-v1.5"
+            )
+
+            assert (
+                document_rag_metadata[
+                    "embedding_dimensions"
+                ]
+                == 384
+            )
+
+            # Verify RAG indexing metadata returned with the run.
+            completed_run_metadata = (
+                completed_run["extra_metadata"]
+            )
+
+            assert isinstance(
+                completed_run_metadata,
+                dict,
+            )
+
+            rag_metadata = (
+                completed_run_metadata[
+                    "rag_index"
+                ]
+            )
+
+            assert isinstance(
+                rag_metadata,
+                dict,
+            )
+
+            assert rag_metadata["chunk_count"] > 0
+
+            assert (
+                rag_metadata[
+                    "embedded_chunk_count"
+                ]
+                == rag_metadata["chunk_count"]
+            )
+
+            assert (
+                rag_metadata[
+                    "embedding_dimensions"
+                ]
+                == 384
+            )
+
+            # Verify chunks and vectors were persisted in PostgreSQL.
+            with SessionLocal() as database_session:
+                stored_chunk_count = (
+                    database_session.scalar(
+                        select(func.count())
+                        .select_from(DocumentChunk)
+                        .where(
+                            DocumentChunk.document_id
+                            == UUID(document_id),
+                            DocumentChunk.processing_run_id
+                            == UUID(processing_run_id),
+                            DocumentChunk.status
+                            == "ready",
+                        )
+                    )
+                )
+
+                stored_chunks = list(
+                    database_session.scalars(
+                        select(DocumentChunk)
+                        .where(
+                            DocumentChunk.document_id
+                            == UUID(document_id),
+                            DocumentChunk.processing_run_id
+                            == UUID(processing_run_id),
+                        )
+                        .order_by(
+                            DocumentChunk.chunk_index.asc()
+                        )
+                    ).all()
+                )
+
+            assert int(stored_chunk_count or 0) > 0
+            assert stored_chunks
+
+            assert int(
+                stored_chunk_count or 0
+            ) == len(stored_chunks)
+
+            first_chunk = stored_chunks[0]
+
+            assert first_chunk.status == "ready"
+            assert first_chunk.embedding is not None
+
+            assert len(
+                first_chunk.embedding
+            ) == 384
+
+            assert (
+                first_chunk.embedding_provider
+                == "fastembed"
+            )
+
+            assert first_chunk.embedding_model == (
+                "BAAI/bge-small-en-v1.5"
+            )
+
+            assert (
+                first_chunk.embedding_dimensions
+                == 384
+            )
+
+            assert first_chunk.embedded_at is not None
+            assert first_chunk.page_number == 1
+            assert first_chunk.chunk_index == 0
+
+            assert (
+                first_chunk.document_id
+                == UUID(document_id)
+            )
+
+            assert (
+                first_chunk.processing_run_id
+                == UUID(processing_run_id)
+            )
+
+            assert (
+                "POL-ASYNC-2026"
+                in first_chunk.text_content
+            )
+
+            assert (
+                "Customer: Jane Doe"
+                in first_chunk.text_content
+            )
+
+            assert first_chunk.character_count > 0
+            assert first_chunk.word_count > 0
+
+            assert (
+                len(first_chunk.content_sha256)
+                == 64
+            )
+
+            assert (
+                first_chunk.extra_metadata[
+                    "source_page_number"
+                ]
+                == 1
+            )
+
+            assert (
+                first_chunk.extra_metadata[
+                    "processing_attempt"
+                ]
+                == 1
+            )
+
+            # Verify semantic vector search.
+            rag_search_response = client.post(
+                "/api/v1/rag/search",
+                headers=authorization_headers,
+                json={
+                    "query": (
+                        "What is the policy number "
+                        "for customer Jane Doe?"
+                    ),
+                    "top_k": 5,
+                    "minimum_similarity": -1.0,
+                    "document_ids": [
+                        document_id,
+                    ],
+                },
+            )
+
+            assert (
+                rag_search_response.status_code
+                == 200
+            ), rag_search_response.text
+
+            rag_search_data = (
+                rag_search_response.json()
+            )
+
+            assert (
+                rag_search_data["result_count"]
+                > 0
+            )
+
+            assert rag_search_data["top_k"] == 5
+
+            assert (
+                rag_search_data[
+                    "embedding_provider"
+                ]
+                == "fastembed"
+            )
+
+            assert (
+                rag_search_data[
+                    "embedding_model"
+                ]
+                == "BAAI/bge-small-en-v1.5"
+            )
+
+            assert (
+                rag_search_data[
+                    "embedding_dimensions"
+                ]
+                == 384
+            )
+
+            first_search_result = (
+                rag_search_data["items"][0]
+            )
+
+            assert (
+                first_search_result["document_id"]
+                == document_id
+            )
+
+            assert (
+                first_search_result[
+                    "processing_run_id"
+                ]
+                == processing_run_id
+            )
+
+            assert (
+                first_search_result["page_number"]
+                == 1
+            )
+
+            assert (
+                "POL-ASYNC-2026"
+                in first_search_result[
+                    "text_content"
+                ]
+            )
+
+            assert (
+                "Jane Doe"
+                in first_search_result[
+                    "text_content"
+                ]
+            )
+
+            assert (
+                -1.0
+                <= first_search_result[
+                    "similarity_score"
+                ]
+                <= 1.0
+            )
+
+            # Verify grounded answer generation with citations.
+            rag_answer_response = client.post(
+                "/api/v1/rag/answer",
+                headers=authorization_headers,
+                json={
+                    "question": (
+                        "What is the policy number "
+                        "for customer Jane Doe?"
+                    ),
+                    "top_k": 5,
+                    "maximum_citations": 3,
+                    "minimum_similarity": -1.0,
+                    "document_ids": [
+                        document_id,
+                    ],
+                },
+            )
+
+            assert (
+                rag_answer_response.status_code
+                == 200
+            ), rag_answer_response.text
+
+            rag_answer_data = (
+                rag_answer_response.json()
+            )
+
+            assert (
+                rag_answer_data["is_grounded"]
+                is True
+            )
+
+            assert (
+                rag_answer_data["citation_count"]
+                > 0
+            )
+
+            assert (
+                rag_answer_data[
+                    "retrieved_chunk_count"
+                ]
+                > 0
+            )
+
+            assert (
+                "POL-ASYNC-2026"
+                in rag_answer_data["answer"]
+            )
+
+            assert (
+                "[1]"
+                in rag_answer_data["answer"]
+            )
+
+            assert (
+                rag_answer_data[
+                    "embedding_provider"
+                ]
+                == "fastembed"
+            )
+
+            assert (
+                rag_answer_data[
+                    "embedding_model"
+                ]
+                == "BAAI/bge-small-en-v1.5"
+            )
+
+            assert (
+                rag_answer_data[
+                    "embedding_dimensions"
+                ]
+                == 384
+            )
+
+            assert (
+                0.0
+                <= rag_answer_data[
+                    "confidence_score"
+                ]
+                <= 1.0
+            )
+
+            first_citation = (
+                rag_answer_data["citations"][0]
+            )
+
+            assert (
+                first_citation["citation_number"]
+                == 1
+            )
+
+            assert (
+                first_citation["document_id"]
+                == document_id
+            )
+
+            assert (
+                first_citation[
+                    "processing_run_id"
+                ]
+                == processing_run_id
+            )
+
+            assert (
+                first_citation["page_number"]
+                == 1
+            )
+
+            assert (
+                "POL-ASYNC-2026"
+                in first_citation["excerpt"]
+            )
+
+            assert (
+                "Jane Doe"
+                in first_citation["excerpt"]
+            )
+
+            assert (
+                first_citation["document_name"]
+                == test_filename
+            )
+
+            assert (
+                -1.0
+                <= first_citation[
+                    "similarity_score"
+                ]
+                <= 1.0
+            )
+
+            # Delete the document after all retrieval checks finish.
             delete_response = client.delete(
                 f"/api/v1/documents/{document_id}",
                 headers=authorization_headers,
@@ -486,6 +918,23 @@ def test_complete_asynchronous_document_processing_flow() -> None:
                 deleted_document_response.status_code
                 == 404
             )
+
+            # Confirm cascade deletion removed stored chunks.
+            with SessionLocal() as database_session:
+                remaining_chunk_count = (
+                    database_session.scalar(
+                        select(func.count())
+                        .select_from(DocumentChunk)
+                        .where(
+                            DocumentChunk.document_id
+                            == UUID(document_id)
+                        )
+                    )
+                )
+
+            assert int(
+                remaining_chunk_count or 0
+            ) == 0
 
     finally:
         cleanup_test_user(

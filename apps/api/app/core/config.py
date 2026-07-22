@@ -3,7 +3,10 @@ from __future__ import annotations
 from functools import lru_cache
 
 from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+)
 
 
 class Settings(BaseSettings):
@@ -40,7 +43,9 @@ class Settings(BaseSettings):
     # Redis and Celery
     redis_url: str = "redis://redis:6379/0"
     celery_broker_url: str = "redis://redis:6379/0"
-    celery_result_backend: str = "redis://redis:6379/1"
+    celery_result_backend: str = (
+        "redis://redis:6379/1"
+    )
 
     # MinIO
     minio_endpoint: str = "minio:9000"
@@ -65,6 +70,53 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = Field(
         default=7,
         ge=1,
+    )
+
+    # Document embeddings
+    embedding_provider: str = "fastembed"
+
+    embedding_model_name: str = (
+        "BAAI/bge-small-en-v1.5"
+    )
+
+    embedding_dimensions: int = Field(
+        default=384,
+        ge=1,
+    )
+
+    embedding_batch_size: int = Field(
+        default=32,
+        ge=1,
+        le=256,
+    )
+
+    embedding_cache_directory: str = (
+        "/app/data/models/fastembed"
+    )
+
+    # RAG chunking
+    rag_chunk_size_characters: int = Field(
+        default=1_200,
+        ge=200,
+        le=10_000,
+    )
+
+    rag_chunk_overlap_characters: int = Field(
+        default=200,
+        ge=0,
+        le=2_000,
+    )
+
+    rag_default_top_k: int = Field(
+        default=8,
+        ge=1,
+        le=50,
+    )
+
+    rag_max_top_k: int = Field(
+        default=25,
+        ge=1,
+        le=100,
     )
 
     # Demo administrator

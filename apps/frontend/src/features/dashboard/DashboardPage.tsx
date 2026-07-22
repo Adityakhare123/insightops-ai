@@ -10,6 +10,7 @@ import { apiClient } from "../../api/client";
 import { useAuth } from "../auth/AuthContext";
 import DocumentsWorkspace from "../documents/DocumentsWorkspace";
 import UploadDocumentModal from "../documents/UploadDocumentModal";
+import RAGWorkspace from "../rag/RAGWorkspace";
 
 import type {
   HealthResponse,
@@ -18,7 +19,8 @@ import type {
 
 type DashboardSection =
   | "overview"
-  | "documents";
+  | "documents"
+  | "rag";
 
 
 interface DashboardMetric {
@@ -180,8 +182,15 @@ export default function DashboardPage() {
           </button>
 
           <button
-            className="sidebar-navigation-item"
+            className={
+              activeSection === "rag"
+                ? "sidebar-navigation-item active"
+                : "sidebar-navigation-item"
+            }
             type="button"
+            onClick={() => {
+              setActiveSection("rag");
+            }}
           >
             <span>03</span>
             Ask InsightOps
@@ -255,7 +264,7 @@ export default function DashboardPage() {
             aria-label="Sign out"
             title="Sign out"
           >
-            ↗
+            {"->"}
           </button>
         </div>
       </aside>
@@ -574,10 +583,10 @@ export default function DashboardPage() {
                       "build-progress-header"
                     }
                   >
-                    <strong>40%</strong>
+                    <strong>60%</strong>
 
                     <span>
-                      4 of 10 days
+                      6 of 10 days
                     </span>
                   </div>
 
@@ -588,7 +597,7 @@ export default function DashboardPage() {
                   >
                     <span
                       style={{
-                        width: "40%",
+                        width: "60%",
                       }}
                     />
                   </div>
@@ -655,6 +664,26 @@ export default function DashboardPage() {
 
                   <div
                     className={
+                      "activity-entry complete"
+                    }
+                  >
+                    <span />
+
+                    <div>
+                      <strong>
+                        Document intelligence
+                      </strong>
+
+                      <p>
+                        Extraction, chunking,
+                        embeddings, and grounded
+                        document Q&amp;A are active.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={
                       "activity-entry current"
                     }
                   >
@@ -662,12 +691,12 @@ export default function DashboardPage() {
 
                     <div>
                       <strong>
-                        Document ingestion
+                        Agentic intelligence
                       </strong>
 
                       <p>
-                        Upload and MinIO storage
-                        workflow active.
+                        Safe SQL and reconciliation
+                        agents are the next phase.
                       </p>
                     </div>
                   </div>
@@ -683,6 +712,10 @@ export default function DashboardPage() {
               setIsUploadModalOpen(true);
             }}
           />
+        )}
+
+        {activeSection === "rag" && (
+          <RAGWorkspace />
         )}
       </main>
 

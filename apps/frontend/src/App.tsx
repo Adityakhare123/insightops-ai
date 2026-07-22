@@ -1,6 +1,6 @@
-import DashboardPage from "./features/dashboard/DashboardPage";
-import LoginPage from "./features/auth/LoginPage";
 import { useAuth } from "./features/auth/AuthContext";
+import LoginPage from "./features/auth/LoginPage";
+import DashboardPage from "./features/dashboard/DashboardPage";
 
 
 function ApplicationLoader() {
@@ -10,7 +10,9 @@ function ApplicationLoader() {
         IO
       </div>
 
-      <p>Restoring your secure workspace…</p>
+      <p>
+        Restoring your secure workspace…
+      </p>
 
       <div className="application-loader-track">
         <span />
