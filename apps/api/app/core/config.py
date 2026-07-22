@@ -42,7 +42,11 @@ class Settings(BaseSettings):
 
     # Redis and Celery
     redis_url: str = "redis://redis:6379/0"
-    celery_broker_url: str = "redis://redis:6379/0"
+
+    celery_broker_url: str = (
+        "redis://redis:6379/0"
+    )
+
     celery_result_backend: str = (
         "redis://redis:6379/1"
     )
@@ -94,7 +98,7 @@ class Settings(BaseSettings):
         "/app/data/models/fastembed"
     )
 
-    # RAG chunking
+    # RAG chunking and retrieval
     rag_chunk_size_characters: int = Field(
         default=1_200,
         ge=200,
@@ -117,6 +121,25 @@ class Settings(BaseSettings):
         default=25,
         ge=1,
         le=100,
+    )
+
+    # Safe SQL Agent
+    sql_agent_max_rows: int = Field(
+        default=500,
+        ge=1,
+        le=10_000,
+    )
+
+    sql_agent_max_sql_length: int = Field(
+        default=20_000,
+        ge=100,
+        le=100_000,
+    )
+
+    sql_agent_statement_timeout_ms: int = Field(
+        default=5_000,
+        ge=100,
+        le=60_000,
     )
 
     # Demo administrator

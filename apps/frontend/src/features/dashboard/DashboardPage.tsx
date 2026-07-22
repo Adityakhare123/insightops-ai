@@ -6,11 +6,18 @@ import {
   useQuery,
 } from "@tanstack/react-query";
 
-import { apiClient } from "../../api/client";
-import { useAuth } from "../auth/AuthContext";
+import {
+  apiClient,
+} from "../../api/client";
+
+import {
+  useAuth,
+} from "../auth/AuthContext";
+
 import DocumentsWorkspace from "../documents/DocumentsWorkspace";
 import UploadDocumentModal from "../documents/UploadDocumentModal";
 import RAGWorkspace from "../rag/RAGWorkspace";
+import SQLAnalystWorkspace from "../sqlAgent/SQLAnalystWorkspace";
 
 import type {
   HealthResponse,
@@ -20,18 +27,23 @@ import type {
 type DashboardSection =
   | "overview"
   | "documents"
-  | "rag";
+  | "rag"
+  | "sql";
 
 
 interface DashboardMetric {
   label: string;
   value: string;
   change: string;
-  status: "positive" | "warning" | "neutral";
+  status:
+    | "positive"
+    | "warning"
+    | "neutral";
 }
 
 
-const DASHBOARD_METRICS: DashboardMetric[] = [
+const DASHBOARD_METRICS:
+DashboardMetric[] = [
   {
     label: "Policies monitored",
     value: "150",
@@ -154,7 +166,9 @@ export default function DashboardPage() {
           <button
             className={
               activeSection === "overview"
-                ? "sidebar-navigation-item active"
+                ? (
+                  "sidebar-navigation-item active"
+                )
                 : "sidebar-navigation-item"
             }
             type="button"
@@ -169,7 +183,9 @@ export default function DashboardPage() {
           <button
             className={
               activeSection === "documents"
-                ? "sidebar-navigation-item active"
+                ? (
+                  "sidebar-navigation-item active"
+                )
                 : "sidebar-navigation-item"
             }
             type="button"
@@ -184,7 +200,9 @@ export default function DashboardPage() {
           <button
             className={
               activeSection === "rag"
-                ? "sidebar-navigation-item active"
+                ? (
+                  "sidebar-navigation-item active"
+                )
                 : "sidebar-navigation-item"
             }
             type="button"
@@ -197,11 +215,20 @@ export default function DashboardPage() {
           </button>
 
           <button
-            className="sidebar-navigation-item"
+            className={
+              activeSection === "sql"
+                ? (
+                  "sidebar-navigation-item active"
+                )
+                : "sidebar-navigation-item"
+            }
             type="button"
+            onClick={() => {
+              setActiveSection("sql");
+            }}
           >
             <span>04</span>
-            Reconciliation
+            SQL Analyst
           </button>
 
           <button
@@ -209,6 +236,14 @@ export default function DashboardPage() {
             type="button"
           >
             <span>05</span>
+            Reconciliation
+          </button>
+
+          <button
+            className="sidebar-navigation-item"
+            type="button"
+          >
+            <span>06</span>
             Reports
           </button>
 
@@ -218,7 +253,7 @@ export default function DashboardPage() {
             className="sidebar-navigation-item"
             type="button"
           >
-            <span>06</span>
+            <span>07</span>
             Data sources
           </button>
 
@@ -226,7 +261,7 @@ export default function DashboardPage() {
             className="sidebar-navigation-item"
             type="button"
           >
-            <span>07</span>
+            <span>08</span>
             Users and access
           </button>
 
@@ -234,7 +269,7 @@ export default function DashboardPage() {
             className="sidebar-navigation-item"
             type="button"
           >
-            <span>08</span>
+            <span>09</span>
             System health
           </button>
         </nav>
@@ -324,7 +359,8 @@ export default function DashboardPage() {
                         healthQuery.data
                           ? (
                             `API v${
-                              healthQuery.data.version
+                              healthQuery
+                                .data.version
                             }`
                           )
                           : "Backend connection"
@@ -432,17 +468,9 @@ export default function DashboardPage() {
                   + "operational-panel"
                 }
               >
-                <div
-                  className={
-                    "dashboard-panel-header"
-                  }
-                >
+                <div className="dashboard-panel-header">
                   <div>
-                    <p
-                      className={
-                        "dashboard-panel-label"
-                      }
-                    >
+                    <p className="dashboard-panel-label">
                       Reconciliation overview
                     </p>
 
@@ -458,11 +486,7 @@ export default function DashboardPage() {
 
                 <div className="exception-list">
                   <div className="exception-item">
-                    <span
-                      className={
-                        "exception-number"
-                      }
-                    >
+                    <span className="exception-number">
                       08
                     </span>
 
@@ -479,21 +503,13 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    <span
-                      className={
-                        "exception-badge warning"
-                      }
-                    >
+                    <span className="exception-badge warning">
                       Review
                     </span>
                   </div>
 
                   <div className="exception-item">
-                    <span
-                      className={
-                        "exception-number"
-                      }
-                    >
+                    <span className="exception-number">
                       05
                     </span>
 
@@ -509,21 +525,13 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    <span
-                      className={
-                        "exception-badge warning"
-                      }
-                    >
+                    <span className="exception-badge warning">
                       Review
                     </span>
                   </div>
 
                   <div className="exception-item">
-                    <span
-                      className={
-                        "exception-number"
-                      }
-                    >
+                    <span className="exception-number">
                       85
                     </span>
 
@@ -540,11 +548,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    <span
-                      className={
-                        "exception-badge positive"
-                      }
-                    >
+                    <span className="exception-badge positive">
                       Matched
                     </span>
                   </div>
@@ -557,17 +561,9 @@ export default function DashboardPage() {
                   + "activity-panel"
                 }
               >
-                <div
-                  className={
-                    "dashboard-panel-header"
-                  }
-                >
+                <div className="dashboard-panel-header">
                   <div>
-                    <p
-                      className={
-                        "dashboard-panel-label"
-                      }
-                    >
+                    <p className="dashboard-panel-label">
                       Platform status
                     </p>
 
@@ -578,37 +574,25 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="build-progress">
-                  <div
-                    className={
-                      "build-progress-header"
-                    }
-                  >
-                    <strong>60%</strong>
+                  <div className="build-progress-header">
+                    <strong>70%</strong>
 
                     <span>
-                      6 of 10 days
+                      7 of 10 days
                     </span>
                   </div>
 
-                  <div
-                    className={
-                      "build-progress-track"
-                    }
-                  >
+                  <div className="build-progress-track">
                     <span
                       style={{
-                        width: "60%",
+                        width: "70%",
                       }}
                     />
                   </div>
                 </div>
 
                 <div className="activity-timeline">
-                  <div
-                    className={
-                      "activity-entry complete"
-                    }
-                  >
+                  <div className="activity-entry complete">
                     <span />
 
                     <div>
@@ -617,17 +601,13 @@ export default function DashboardPage() {
                       </strong>
 
                       <p>
-                        Docker services and
-                        health checks configured.
+                        Docker services and health
+                        checks configured.
                       </p>
                     </div>
                   </div>
 
-                  <div
-                    className={
-                      "activity-entry complete"
-                    }
-                  >
+                  <div className="activity-entry complete">
                     <span />
 
                     <div>
@@ -642,11 +622,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div
-                    className={
-                      "activity-entry complete"
-                    }
-                  >
+                  <div className="activity-entry complete">
                     <span />
 
                     <div>
@@ -655,18 +631,13 @@ export default function DashboardPage() {
                       </strong>
 
                       <p>
-                        Secure login and
-                        protected workspace
-                        active.
+                        Secure login and protected
+                        workspace active.
                       </p>
                     </div>
                   </div>
 
-                  <div
-                    className={
-                      "activity-entry complete"
-                    }
-                  >
+                  <div className="activity-entry complete">
                     <span />
 
                     <div>
@@ -675,28 +646,26 @@ export default function DashboardPage() {
                       </strong>
 
                       <p>
-                        Extraction, chunking,
-                        embeddings, and grounded
+                        Extraction, embeddings,
+                        retrieval, and grounded
                         document Q&amp;A are active.
                       </p>
                     </div>
                   </div>
 
-                  <div
-                    className={
-                      "activity-entry current"
-                    }
-                  >
+                  <div className="activity-entry current">
                     <span />
 
                     <div>
                       <strong>
-                        Agentic intelligence
+                        Safe SQL intelligence
                       </strong>
 
                       <p>
-                        Safe SQL and reconciliation
-                        agents are the next phase.
+                        Natural-language planning,
+                        SQL validation, read-only
+                        execution, and query results
+                        are active.
                       </p>
                     </div>
                   </div>
@@ -716,6 +685,10 @@ export default function DashboardPage() {
 
         {activeSection === "rag" && (
           <RAGWorkspace />
+        )}
+
+        {activeSection === "sql" && (
+          <SQLAnalystWorkspace />
         )}
       </main>
 

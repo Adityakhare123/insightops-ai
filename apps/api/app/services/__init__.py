@@ -150,6 +150,67 @@ from apps.api.app.services.rag_answering import (
     tokenize_answer_text,
     truncate_citation_excerpt,
 )
+from apps.api.app.services.sql_agent_guardrails import (
+    SQL_AGENT_ALLOWED_SCHEMAS,
+    SQL_AGENT_ALLOWED_TABLES,
+    EmptySQLQueryError,
+    InvalidSQLAgentLimitError,
+    MissingSQLDataSourceError,
+    MultipleSQLStatementsError,
+    NonReadOnlySQLQueryError,
+    SafeSQLValidationResult,
+    SQLAgentGuardrailError,
+    SQLParsingError,
+    SQLQueryTooLongError,
+    UnauthorizedSQLTableError,
+    UnsafeSQLFunctionError,
+    build_row_limited_sql,
+    validate_sql_agent_query,
+)
+from apps.api.app.services.sql_agent_executor import (
+    POSTGRES_QUERY_CANCELLED_SQLSTATE,
+    InvalidSQLAgentTimeoutError,
+    SQLAgentConnectionError,
+    SQLAgentDatabaseError,
+    SQLAgentExecutionError,
+    SQLAgentExecutionResult,
+    SQLAgentTimeoutError,
+    execute_validated_sql,
+    extract_database_sqlstate,
+    is_statement_timeout_error,
+    open_sql_agent_connection,
+    resolve_statement_timeout_ms,
+    serialize_sql_row,
+    serialize_sql_value,
+    validate_and_execute_sql,
+)
+from apps.api.app.services.sql_agent_planner import (
+    EmptySQLAgentQuestionError,
+    SQLAgentIntent,
+    SQLAgentPlan,
+    SQLAgentPlannerError,
+    SQLAgentQuestionTooLongError,
+    UnsupportedSQLAgentQuestionError,
+    build_sql_for_intent,
+    detect_sql_agent_intent,
+    normalize_sql_agent_question,
+    plan_sql_agent_question,
+)
+
+from apps.api.app.services.sql_agent_schema import (
+    InsuranceSchemaCatalog,
+    InvalidSQLAgentIdentifierError,
+    MissingSQLAgentColumnError,
+    MissingSQLAgentTableError,
+    SQLAgentColumnCatalog,
+    SQLAgentRelationship,
+    SQLAgentSchemaError,
+    SQLAgentTableCatalog,
+    build_schema_catalog_from_mapping,
+    load_insurance_schema_catalog,
+    validate_schema_identifier,
+)
+
 
 __all__ = [
     # Authentication
@@ -303,4 +364,64 @@ __all__ = [
     "compose_grounded_answer",
     "build_grounded_answer",
     "answer_document_question",
+    
+    # SQL Agent guardrails
+    "SQL_AGENT_ALLOWED_SCHEMAS",
+    "SQL_AGENT_ALLOWED_TABLES",
+    "SQLAgentGuardrailError",
+    "EmptySQLQueryError",
+    "SQLQueryTooLongError",
+    "SQLParsingError",
+    "MultipleSQLStatementsError",
+    "NonReadOnlySQLQueryError",
+    "UnauthorizedSQLTableError",
+    "UnsafeSQLFunctionError",
+    "MissingSQLDataSourceError",
+    "InvalidSQLAgentLimitError",
+    "SafeSQLValidationResult",
+    "build_row_limited_sql",
+    "validate_sql_agent_query",
+    
+    # SQL Agent execution
+    "POSTGRES_QUERY_CANCELLED_SQLSTATE",
+    "SQLAgentExecutionError",
+    "SQLAgentDatabaseError",
+    "SQLAgentTimeoutError",
+    "InvalidSQLAgentTimeoutError",
+    "SQLAgentConnectionError",
+    "SQLAgentExecutionResult",
+    "resolve_statement_timeout_ms",
+    "serialize_sql_value",
+    "serialize_sql_row",
+    "extract_database_sqlstate",
+    "is_statement_timeout_error",
+    "open_sql_agent_connection",
+    "execute_validated_sql",
+    "validate_and_execute_sql",
+    
+    # SQL Agent schema
+    "SQLAgentSchemaError",
+    "MissingSQLAgentTableError",
+    "MissingSQLAgentColumnError",
+    "InvalidSQLAgentIdentifierError",
+    "SQLAgentColumnCatalog",
+    "SQLAgentRelationship",
+    "SQLAgentTableCatalog",
+    "InsuranceSchemaCatalog",
+    "validate_schema_identifier",
+    "build_schema_catalog_from_mapping",
+    "load_insurance_schema_catalog",
+
+    # SQL Agent planner
+    "SQLAgentPlannerError",
+    "EmptySQLAgentQuestionError",
+    "SQLAgentQuestionTooLongError",
+    "UnsupportedSQLAgentQuestionError",
+    "SQLAgentIntent",
+    "SQLAgentPlan",
+    "normalize_sql_agent_question",
+    "detect_sql_agent_intent",
+    "build_sql_for_intent",
+    "plan_sql_agent_question",
+        
 ]

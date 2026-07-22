@@ -23,3 +23,39 @@ build/
 minio-data/
 postgres-data/
 redis-data/
+
+$GitIgnoreEntries = @(
+    "",
+    "# Runtime AI model cache",
+    "data/models/",
+    "",
+    "# TypeScript incremental build cache",
+    "*.tsbuildinfo"
+)
+
+foreach ($Entry in $GitIgnoreEntries) {
+    if (
+        $Entry -eq ""
+        -or -not (
+            Select-String `
+                -Path .gitignore `
+                -SimpleMatch `
+                -Quiet `
+                -Pattern $Entry `
+                -ErrorAction SilentlyContinue
+        )
+    ) {
+        Add-Content `
+            -Path .gitignore `
+            -Value $Entry
+    }
+}
+
+@"
+
+# Runtime AI model cache
+data/models/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+"@ | Add-Content .gitignore
