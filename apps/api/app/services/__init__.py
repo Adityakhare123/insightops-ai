@@ -210,6 +210,30 @@ from apps.api.app.services.sql_agent_schema import (
     load_insurance_schema_catalog,
     validate_schema_identifier,
 )
+from apps.api.app.services.reconciliation_rules import (
+    PolicyDatabaseRecord,
+    ReconciliationEvaluation,
+    ReconciliationRuleResult,
+    evaluate_policy_reconciliation,
+)
+from apps.api.app.services.policy_reconciliation import (
+    DocumentNotProcessedError,
+    DocumentTextUnavailableError,
+    PolicyReconciliationError,
+    PolicyReconciliationResult,
+    ReconciliationDocumentNotFoundError,
+    run_policy_document_reconciliation,
+)
+from apps.api.app.services.reconciliation_reports import (
+    GeneratedReconciliationReport,
+    ReconciliationReportData,
+    ReconciliationReportError,
+    ReconciliationReportNotFoundError,
+    build_reconciliation_csv,
+    build_reconciliation_xlsx,
+    generate_reconciliation_report,
+    load_reconciliation_report_data,
+)
 
 
 __all__ = [
@@ -423,5 +447,25 @@ __all__ = [
     "detect_sql_agent_intent",
     "build_sql_for_intent",
     "plan_sql_agent_question",
-        
+    
+    "PolicyDatabaseRecord",
+    "ReconciliationEvaluation",
+    "ReconciliationRuleResult",
+    "evaluate_policy_reconciliation",
+    
+    "PolicyReconciliationError",
+    "ReconciliationDocumentNotFoundError",
+    "DocumentNotProcessedError",
+    "DocumentTextUnavailableError",
+    "PolicyReconciliationResult",
+    "run_policy_document_reconciliation",
+    
+    "GeneratedReconciliationReport",
+    "ReconciliationReportData",
+    "ReconciliationReportError",
+    "ReconciliationReportNotFoundError",
+    "build_reconciliation_csv",
+    "build_reconciliation_xlsx",
+    "generate_reconciliation_report",
+    "load_reconciliation_report_data",
 ]

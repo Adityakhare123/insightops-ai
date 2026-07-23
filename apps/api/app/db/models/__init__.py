@@ -22,6 +22,15 @@ from apps.api.app.db.models.workspace import (
     Policy,
     Workspace,
 )
+from apps.api.app.db.models.reconciliation_finding import (
+    ReconciliationFinding,
+)
+from apps.api.app.db.models.reconciliation_run import (
+    ReconciliationRun,
+)
+from apps.api.app.db.models.review_task import (
+    ReviewTask,
+)
 
 
 __all__ = [
@@ -39,4 +48,8 @@ __all__ = [
     "Policy",
     "Payment",
     "Commission",
+    
+    "ReconciliationRun",
+    "ReconciliationFinding",
+    "ReviewTask",
 ]

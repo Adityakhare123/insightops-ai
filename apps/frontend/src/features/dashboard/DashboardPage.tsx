@@ -17,6 +17,9 @@ import {
 import DocumentsWorkspace from "../documents/DocumentsWorkspace";
 import UploadDocumentModal from "../documents/UploadDocumentModal";
 import RAGWorkspace from "../rag/RAGWorkspace";
+import {
+  ReconciliationWorkspace,
+} from "../reconciliation/ReconciliationWorkspace";
 import SQLAnalystWorkspace from "../sqlAgent/SQLAnalystWorkspace";
 
 import type {
@@ -28,7 +31,8 @@ type DashboardSection =
   | "overview"
   | "documents"
   | "rag"
-  | "sql";
+  | "sql"
+  | "reconciliation";
 
 
 interface DashboardMetric {
@@ -232,8 +236,20 @@ export default function DashboardPage() {
           </button>
 
           <button
-            className="sidebar-navigation-item"
+            className={
+              activeSection
+              === "reconciliation"
+                ? (
+                  "sidebar-navigation-item active"
+                )
+                : "sidebar-navigation-item"
+            }
             type="button"
+            onClick={() => {
+              setActiveSection(
+                "reconciliation",
+              );
+            }}
           >
             <span>05</span>
             Reconciliation
@@ -479,7 +495,14 @@ export default function DashboardPage() {
                     </h2>
                   </div>
 
-                  <button type="button">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveSection(
+                        "reconciliation",
+                      );
+                    }}
+                  >
                     View all
                   </button>
                 </div>
@@ -575,17 +598,17 @@ export default function DashboardPage() {
 
                 <div className="build-progress">
                   <div className="build-progress-header">
-                    <strong>70%</strong>
+                    <strong>80%</strong>
 
                     <span>
-                      7 of 10 days
+                      8 of 10 days
                     </span>
                   </div>
 
                   <div className="build-progress-track">
                     <span
                       style={{
-                        width: "70%",
+                        width: "80%",
                       }}
                     />
                   </div>
@@ -653,7 +676,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="activity-entry current">
+                  <div className="activity-entry complete">
                     <span />
 
                     <div>
@@ -665,6 +688,23 @@ export default function DashboardPage() {
                         Natural-language planning,
                         SQL validation, read-only
                         execution, and query results
+                        are active.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="activity-entry current">
+                    <span />
+
+                    <div>
+                      <strong>
+                        Reconciliation workflow
+                      </strong>
+
+                      <p>
+                        Document comparison,
+                        findings, human review,
+                        and downloadable reports
                         are active.
                       </p>
                     </div>
@@ -689,6 +729,11 @@ export default function DashboardPage() {
 
         {activeSection === "sql" && (
           <SQLAnalystWorkspace />
+        )}
+
+        {activeSection
+        === "reconciliation" && (
+          <ReconciliationWorkspace />
         )}
       </main>
 

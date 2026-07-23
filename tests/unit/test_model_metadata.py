@@ -12,17 +12,20 @@ from apps.api.app.db.models.document_chunk import (
 EXPECTED_TABLES = {
     "workspaces",
     "users",
-    "insurance_carriers",
-    "insurance_plans",
     "insurance_agents",
-    "insurance_customers",
-    "insurance_policies",
-    "insurance_payments",
+    "insurance_carriers",
     "insurance_commissions",
+    "insurance_customers",
+    "insurance_payments",
+    "insurance_plans",
+    "insurance_policies",
     "documents",
     "document_processing_runs",
     "document_pages",
     "document_chunks",
+    "reconciliation_runs",
+    "reconciliation_findings",
+    "review_tasks",
 }
 
 

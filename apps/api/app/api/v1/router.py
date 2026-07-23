@@ -10,6 +10,9 @@ from apps.api.app.api.v1.endpoints.documents import (
 from apps.api.app.api.v1.endpoints.rag import (
     router as rag_router,
 )
+from apps.api.app.api.v1.endpoints.reconciliation import (
+    router as reconciliation_router,
+)
 from apps.api.app.api.v1.endpoints.sql_agent import (
     router as sql_agent_router,
 )
@@ -44,4 +47,10 @@ api_router.include_router(
     sql_agent_router,
     prefix="/sql-agent",
     tags=["sql-agent"],
+)
+
+api_router.include_router(
+    reconciliation_router,
+    prefix="/reconciliation",
+    tags=["reconciliation"],
 )
